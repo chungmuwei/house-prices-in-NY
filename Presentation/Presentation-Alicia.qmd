@@ -1,0 +1,133 @@
+---
+title: "Group Presentation"
+format: revealjs
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(ggfortify)
+library(ggplot2)
+library(dplyr)
+library(ISLR)
+library(sjPlot)
+library(leaps)
+
+# reads in data
+#house_data = read.delim("../../Desktop/Project/housing-prices-ge19.txt",
+#                        header = TRUE)
+house_data = read.delim("housing-prices-ge19.txt",
+                        header = TRUE)
+# converts data types 
+house_data = house_data %>% mutate ( 
+  Waterfront = as.factor(Waterfront), 
+  New.Construct = as.factor(New.Construct), 
+  Central.Air = as.factor(Central.Air), 
+  Fuel.Type = as.factor(Fuel.Type), 
+  Heat.Type = as.factor(Heat.Type), 
+  Sewer.Type = as.factor(Sewer.Type), 
+  Test = as.factor(Test) 
+) 
+
+# shows data
+glimpse(house_data)
+```
+
+Checks linearity assumption
+
+```{r}
+# Scatterplots of lot size against Price
+price_lotsize = house_data |> ggplot() +
+  aes(x = Lot.Size, y = house_data$Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+# Scatterplots of age against Price
+price_age = house_data |> ggplot() +
+  aes(x = Age, y = house_data$Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+# Scatterplots of land value against Price
+price_landvalue = house_data |> ggplot() +
+  aes(x = Land.Value, y = house_data$Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+# Scatterplots of living area against Price
+price_livingarea = house_data |> ggplot() +
+  aes(x = Living.Area, y = house_data$Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+# Scatterplots of percent college against Price
+price_pctcollege = house_data |> ggplot() +
+  aes(x = Pct.College, y = house_data$Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+# Scatterplots of bedrooms against Price
+price_bedrooms = house_data |> ggplot() +
+  aes(x = Bedrooms, y = house_data$Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+# Scatterplots of fireplaces against Price
+price_fireplaces = house_data |> ggplot() +
+  aes(x = Fireplaces, y = house_data$Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+# Scatterplots of bathrooms against Price
+price_bathrooms = house_data |> ggplot() +
+  aes(x = Bathrooms, y = house_data$Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+# Scatterplots of rooms against Price
+price_rooms = house_data |> ggplot() +
+  aes(x = Rooms, y = house_data$Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+```
+
+```{r}
+# Prints the scatterplots
+price_lotsize
+price_age
+price_landvalue
+price_livingarea
+price_pctcollege
+price_bedrooms
+price_fireplaces
+price_bathrooms
+price_rooms
+```
+
+```{r}
+# Sample Mean of Price
+M0 = lm(house_data$Price ~ 1, data = house_data)
+# Price against everything except itself
+M1 = lm(house_data$Price ~ ., data = house_data)
+# Rounds summary of M0 to 3 signficant figures
+round(summary(M0)$coef,3)
+# Rounds summary of M1 to 3 signficant figures
+round(summary(M1)$coef,3)
+```
+
+Performs backwards AIC
+
+```{r}
+# Dropping of variables backwards until lowest AIC is reached
+step.back.aic = step(M1,
+                     direction = "backward",
+                     trace = TRUE)
+```
+
+Performs forwards AIC
+
+```{r}
+# Dropping of variables forwards until lowest AIC is reached
+step.fwd.aic = step(M0, scope = list(lower = M0, upper = M1),
+                     direction = "forward",
+                     trace = TRUE)
+```
+
+Performs exhaustive search
+
+```{r}
+# Exhaustive search
+exh = regsubsets(house_data$Price ~ ., data = house_data, nvmax = 17)
+summary(exh)$outmat
+```

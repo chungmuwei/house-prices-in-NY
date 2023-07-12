@@ -1,0 +1,13 @@
+name: predicting-house-price
+title: predicting-house-price
+username:
+account: chungmuwei
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 7522165
+bundleId: 6476245
+url: https://chungmuwei.shinyapps.io/predicting-house-price/
+when: 1667581545.72942
+lastSyncTime: 1667581545.72944
+asMultiple: FALSE
+asStatic: FALSE

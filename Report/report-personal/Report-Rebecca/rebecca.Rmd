@@ -1,0 +1,105 @@
+---
+title: "House Prices in New York"
+author: "Group CC901E2"
+institute: "The University of Sydney"
+output: html_notebook
+format:
+  revealjs:
+    self-contained: true
+    fig-format: retina
+    toc: true
+    toc-depth: 1
+    number-sections: false
+    code-line-numbers: false
+    slide-number: c
+    scrollable: true
+    pdf-max-pages-per-slide: 1
+    history: false # don't add each slide to browser history
+    
+execute:
+  echo: false
+  warning: false # do not show warning in the chunk
+  message: false # do not show message in the chunk
+---
+
+
+
+```{r message=FALSE}
+# Load packages here
+library(tidyverse)
+library(ggplot2)
+library(ggfortify)
+library(dplyr)
+library(ISLR)
+library(sjPlot)
+library(leaps)
+library(GGally)
+library(caret)
+library(mplot)
+library(lmSubsets)
+```
+
+```{r, message=FALSE}
+# The original data is loaded here
+#| output: FALSE
+house = read.delim("housing-prices-ge19.txt", 
+                    header = TRUE)
+# convert data types
+house = house %>% mutate (
+  Waterfront = as.factor(Waterfront),
+  New.Construct = as.factor(New.Construct),
+  Central.Air = as.factor(Central.Air),
+  Fuel.Type = as.factor(Fuel.Type),
+  Heat.Type = as.factor(Heat.Type),
+  Sewer.Type = as.factor(Sewer.Type),
+  Test = as.factor(Test)
+)
+
+# Remove the Test column, because we do not have the metadata
+house = house %>%
+  select(-Test)
+
+# # Trying to filter some of the variables 
+# house_clean = house %>% 
+#   dplyr::mutate(
+#     Lot.Size = case_when(
+#     Lot.Size < 1000 ~ NA_real_,
+#      is.na(Lot.Size) ~ NA_real_,
+#      TRUE ~ Lot.Size
+#     )
+#   ) %>% drop_na(Lot.Size)
+# summary(house_clean)
+
+# clean names
+# house = janitor::clean_names(house)
+```
+
+
+
+# Stable Model
+It can be found that the forwards AIC and backwards AIC are not so stable, a stable model are then analysed.
+
+```{r, echo=FALSE}
+load("house_main.RData")
+```
+
+
+
+Through the variable inclusion plot, it can be found that  `Land.Value`, `Living.Area`, `Bathrooms`, `New.Construct`, `Waterfront` are the five most important variables for predicting `Price`, while the `Sewer.TypePublic` and all levels of `FuelType` do not provide any useful information, since they are included in models by chance.
+
+
+
+According to the model stability plot (shown as below), it appears to be dominant models in models of size **two, three, and five** (including the intercept), as demonstrated by one of the circles being substantially larger than the other circles with models of the same size. Also, the stepwise model of size 14 is not stable because of their small circle size. Finally, it can be found that the simple reversion models is stable, as it is always selected in bootstrap resamples.
+
+```{r, fig.fullwidth=TRUE}
+plot(vis.h, highlight = "Living.Area", which = "boot", interaction = F, max.circle = 10, seed = 2022, legend.position = "bottom")
+```
+
+
+```{r}
+# print(vis.h, min.prob = 0.5)
+```
+
+
+In conclusion, as assumption are all met, The $Price \sim Waterfront1 + Land.Value + Living.Area + Bathrooms$ model is selected in 78% of bootstrap resamples, which strikes the balance between accuracy and stability.
+

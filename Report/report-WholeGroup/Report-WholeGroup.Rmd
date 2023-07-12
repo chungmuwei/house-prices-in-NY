@@ -1,0 +1,421 @@
+---
+title: House Prices in New York
+
+# Use letters for affiliations
+author:
+  - name: CC901E2
+    affiliation: a
+    
+address:
+  - code: a
+    address: The University of Sydney
+
+# Optional: line of arbitrary text with additional information.
+# Could be used, for example, to mention the bibliographic info in a post-print.
+# If not specified, defaults to "This version was compiled on \today"
+date_subtitle: \today
+
+# For footer text  TODO(fold into template, allow free form two-authors)
+lead_author_surname: CC901E2
+
+# Place eg a DOI URL or CRAN Package URL here
+#doi_footer: "https://cran.r-project.org/package=YourPackage"
+
+# Abstract
+abstract: |
+    The aim of our investigation is to find the most suitable model to predict house prices in New York. Multiple regression methods, including Backward AIC and Forward AIC, were performed to obtain fitted models. In addition, model stability was examined. Three valid models were found: backward model, forward model, and stable model. In-sample and out-of-sample performances of each model were further evaluated. Analyses highlighted that the stable model produced lower $r^2$ and adjusted $r^2$ values, as well as higher RMSE and MAE values. However, it is more stable in comparison to the other two models. Balancing in-sample performances, out-of-sample performances, and stability, we concluded that the stable model may be the most appropriate among the models. With further information about the dataset, a domain knowledge expert may make better judgement on which model to choose.
+
+  
+
+# Optional: One or more keywords
+keywords:
+  - House prices prediction
+  - Linear regression models
+  
+
+# Paper size for the document, values of letter and a4
+papersize: letter
+
+# Font size of the document, values of 9pt (default), 10pt, 11pt and 12pt
+fontsize: 9pt
+
+# Optional: Force one-column layout, default is two-column
+#one_column: true
+
+# Optional: Enables lineno mode, but only if one_column mode is also true
+#lineno: true
+
+# Optional: Enable one-sided layout, default is two-sided
+#one_sided: true
+
+# Optional: Enable section numbering, default is unnumbered
+numbersections: true
+
+# Optional: Specify the depth of section number, default is 5
+#secnumdepth: 5
+
+# Optional: Skip inserting final break between acknowledgements, default is false
+skip_final_break: true
+
+# Optional: Bibliography 
+bibliography: ref
+
+# Customize footer, eg by referencing the vignette
+footer_contents: "DATA 2902: Executive Summary Report"
+
+# Produce a pinp document
+output:
+  pinp::pinp
+    
+
+# # Required: Vignette metadata for inclusion in a package.
+# vignette: >
+#   %\VignetteIndexEntry{YourPackage-vignetteentry}
+#   %\VignetteKeywords{YourPackage, r, anotherkeyword}
+#   %\VignettePackage{YourPackage}
+#   %\VignetteEngine{knitr::rmarkdown}
+
+header-includes:
+  - \usepackage{booktabs}
+---
+
+```{r message=FALSE, warning = FALSE, echo = FALSE}
+# Hide all the codes
+knitr::opts_chunk$set(echo=FALSE)
+```
+
+```{r message=FALSE, warning = FALSE}
+# Load packages here
+library(tidyverse)
+library(ggplot2)
+library(ggfortify)
+library(dplyr)
+library(ISLR)
+library(sjPlot)
+library(leaps)
+library(GGally)
+library(caret)
+library(mplot)
+library(lmSubsets)
+```
+
+```{r}
+# The original data is loaded here
+#| output: FALSE
+house = read.delim("housing-prices-ge19.txt", 
+                    header = TRUE)
+# convert data types
+house = house %>% mutate (
+  Waterfront = as.factor(Waterfront),
+  New.Construct = as.factor(New.Construct),
+  Central.Air = as.factor(Central.Air),
+  Fuel.Type = as.factor(Fuel.Type),
+  Heat.Type = as.factor(Heat.Type),
+  Sewer.Type = as.factor(Sewer.Type),
+  Test = as.factor(Test)
+)
+
+# Remove the Test column, because we do not have the metadata
+house = house %>%
+  select(-Test)
+```
+
+```{r}
+# backward AIC
+
+# Sample Mean of Price
+M0_back = lm(house$Price ~ 1, data = house)
+# Price against everything except itself
+M1_back = lm(house$Price ~ ., data = house)
+
+# Dropping of variables backwards until lowest AIC is reached
+step.back.aic = step(M1_back,
+                     direction = "backward",
+                     trace = FALSE)
+
+```
+
+```{r}
+# Forward AIC
+
+# Sample Mean of Price
+M0_fwd = lm(house$Price ~ 1, data = house)
+# Price against everything except itself
+M1_fwd = lm(house$Price ~ ., data = house)
+
+# Dropping of variables forwards until lowest AIC is reached
+step.fwd.aic = step(M0_fwd, scope = list(lower = M0_fwd, upper = M1_fwd),
+                     direction = "forward",
+                     trace = FALSE)
+```
+
+```{r}
+# Stable model
+stable_model = lm(Price ~ Waterfront + Land.Value + Living.Area + Bathrooms, data = house)
+```
+
+# Introduction
+
+As defined by the United Nations (UN), "housing is the basis of stability and security for an individual or family" \citep{UN}. Price is an important consideration when purchasing a house. What factors are associated with house prices? What are the best predictors of house prices? To answer these questions, in this report, the data set of house prices in New York was used to find the most suitable model for the prediction of house prices. 
+
+# Data Set Description
+
+The data set was obtained from [The Data And Story Library](https://dasl.datadescription.com/datafile/housing-prices-ge19) \citep{origin}, originally sourced from the Mosaic package in R \citep{Data}. It contains $1,734$ rows and $16$ columns with $16$ variables included: $10$ numeric and $6$ categorical. 
+
+These variables provide information about houses in New York, including prices (USD), lot sizes (acres), ages (year), land values (USD), living areas (square feet), percentages of neighbourhood that graduated college (`Pct.College`), whether houses are newly constructed or waterfront ($1$ stands for true, $0$ for false), number of rooms, bedrooms and bathrooms, as well as types of utilities used (such as fuel or heating). However, no information about the "Test" variable was included in the metadata, so it was removed from the data set during the process of analyses.
+
+# Multiple Regression Models {#sec-multimodel}
+
+The scatter plots show that the variables follow linear relationships (Figure A1). Therefore, transformations of the initial data were not made, and the Backward AIC and Forward AIC methods were used to perform multiple regression to find fitted models.
+
+## Backward AIC 
+
+For the Backward AIC, the model selection process starts with all variables. It then removes the least informative variables from the fitted model based on how they would affect the AIC value until the lowest overall AIC is reached. The following fitted model was obtained (backward model): 
+
+*Price \~ Lot.Size + Waterfront1 + Age + Land.Value + New.Construct1	+ Central.Air1 + Heat.TypeHot Air	+ Heat.TypeHot Water + Heat.TypeNone + Living.Area	+ Bedrooms + Bathrooms + Rooms*
+
+## Forward AIC
+
+For the Forward AIC, the model selection starts with no variables other than the dependent variable (i.e. price). It then adds the most informative variables based on the AIC until the fitted model reaches the overall lowest AIC score. The following fitted model was obtained (forward model): 
+
+*Price \~ Living.Area + Land.Value	+ Bathrooms + Waterfront1 + New.Construct1 + Heat.TypeHot Air + Heat.TypeHot Water	+ Heat.TypeNone	+ Lot.Size + Central.Air1 + Age + Rooms + Bedrooms*
+
+
+# Model Stability and the Stable Model {#sec-stability}
+Variable inclusion plot and model stability plot are used to examine the stability of the found backward and forward models. During the process, a new stable model was found.
+
+## Variable inclusion plot {#sec-inclusion}
+
+```{r, echo=FALSE}
+load("house_main.RData")
+```
+
+The variable inclusion plot (Figure \ref{fig:inclusion}) shows that `Land.Value`, `Living.Area`, `Bathrooms`, `New.Construct`, and `Waterfront` are the five most important variables for predicting `Price`. In comparison, `Sewer.Type` and `FuelType` do not provide useful information, as they lie below the path of redundant variables. 
+
+The found backward and forward models contain `Land.Value`, `Living.Area`, `Bathrooms`, `New.Construct`, and `Waterfront` parameters, and avoid `Sewer.TypePublic` and `FuelType`.
+
+```{r, fig.cap="\\label{fig:inclusion}Variable Inclusion Plot", out.width='90%',fig.width=7.8, fig.pos="h!"}
+load("house_main.RData")
+plot(vis.h, which = "vip", interactive = FALSE, legend.position = "bottom")
+```
+
+
+## Model stability plot {#sec-stableplot}
+
+According to the model stability plot (Figure \ref{fig:stability}), there appears to be a dominant model in each size of **two**, **three**, and **five**. This is demonstrated by one circle being substantially larger than the others in the graph.
+
+The plot further indicates that a model of **size 13** is not stable, due to its small circle size. Indeed, the found backward and forward models are of size $13$.
+
+```{r, fig.cap="\\label{fig:stability}Model Stability Plot", out.width='90%',fig.width=7.8, fig.pos="h!"}
+
+plot(vis.h, highlight = "Living.Area", which = "boot", interaction = F, max.circle = 10, seed = 2022, legend.position = "bottom")
+```
+
+## The stable model
+
+Results in the [Variable inclusion plot](@sec-inclusion) and [Model stability plot](@sec-stableplot) sections imply that there may exist a model containing the most important predictors for house prices, and at the same time, of smaller size.
+
+In fact, the following model (stable model) is selected in $78.00\%$ of bootstrap resamples (Figure A2):
+
+*Price \~ Waterfront1 + Land.Value + Living.Area + Bathrooms*
+
+
+# Assumption Checking {#sec-assumption}
+
+Four assumptions were checked for the Backwards AIC, Forwards AIC, and stable models. 
+
+## Linearity
+The linearity assumption was met. As shown at the beginning of the [Multiple Regression Models](@sec-multimodel) section, a linear relationship was shown in the scatter plots (Figure A1). Furthermore, there was no obvious pattern shown in the residuals vs. fitted values plot (Figure A3, A5, A7). 
+
+## Independence
+The independence assumption was likely not met. Properties within the same area are likely not independent, as they will typically have similar attributes due to spatial correlation.
+
+## Homoscedasticity
+The homoscedasticity assumption was met. The residuals do not seem to be fanning out over the range of the fitted values in the residuals vs. fitted values plot (Figures A3, A5, A7). 
+
+## Normality
+The normality assumption can be assumed to be met. While most of the points are reasonably close to the line on the QQ plot, there is some departure from the line at both ends (Figures A4, A6, A8). Due to the sufficiently large sample size, however, we can disregard this and assume normality while relying on the central limit theorem to ensure that the inferences are at least approximately valid.
+
+# Model Evaluation and Results
+
+```{r}
+# backward AIC
+
+# Sample Mean of Price
+M0_back = lm(house$Price ~ 1, data = house)
+# Price against everything except itself
+M1_back = lm(house$Price ~ ., data = house)
+
+# Dropping of variables backwards until lowest AIC is reached
+step.back.aic = step(M1_back,
+                     direction = "backward",
+                     trace = FALSE)
+
+```
+
+
+```{r}
+# Forward AIC
+
+# Sample Mean of Price
+M0_fwd = lm(house$Price ~ 1, data = house)
+# Price against everything except itself
+M1_fwd = lm(house$Price ~ ., data = house)
+
+# Dropping of variables forwards until lowest AIC is reached
+step.fwd.aic = step(M0_fwd, scope = list(lower = M0_fwd, upper = M1_fwd),
+                     direction = "forward",
+                     trace = FALSE)
+```
+
+
+```{r}
+# Stable model
+stable_model = lm(Price ~ Waterfront + Land.Value + Living.Area + Bathrooms, data = house)
+```
+
+```{r}
+# in-sample performance
+
+# r^2 and adjusted r^2 of backward
+rsquare_back = summary(step.back.aic)$r.square
+rsquare_adj_back = summary(step.back.aic)$adj.r.square
+
+# r^2 and adjusted r^2 of forward
+rsquare_fwd = summary(step.fwd.aic)$r.square
+rsquare_adj_fwd = summary(step.fwd.aic)$adj.r.square
+
+# r^2 and adjusted r^2 of stable
+rsquare_stable = summary(stable_model)$r.square
+rsquare_adj_stable = summary(stable_model)$adj.r.square
+
+# make a table
+models = c("Backward", "Forward", "Stable")
+r_square = c(rsquare_back, rsquare_fwd, rsquare_stable)
+r_adj_square = c(rsquare_adj_back, rsquare_adj_fwd, rsquare_adj_stable)
+
+rsquare_table <- data.frame(models, r_square, r_adj_square)
+
+## round into three decimal
+rsquare_table = rsquare_table %>%
+  mutate_if(is.numeric, 
+            round, 
+            digits = 3)
+
+```
+
+```{r}
+set.seed(2022)
+
+# set 10 folds cross validation
+tr_ctrl = trainControl(
+    method = "cv", number = 10,
+    verboseIter = FALSE
+)
+
+# backward
+cv_back = train(
+        Price ~ Lot.Size + Waterfront + Age + Land.Value + 
+                New.Construct + Central.Air + Heat.Type + Living.Area + Bedrooms +                 Bathrooms + Rooms,
+        house,
+        method = "lm",
+        trControl = tr_ctrl
+        )
+
+result_back = cv_back$results
+
+
+# forward
+cv_fwd = train(
+        Price ~ Living.Area + Land.Value + Bathrooms + 
+                Waterfront + New.Construct + Heat.Type + Lot.Size + Central.Air + 
+                Age + Rooms + Bedrooms,
+        house,
+        method = "lm",
+        trControl = tr_ctrl
+        )
+
+result_fwd = cv_fwd$results
+
+# stable
+cv_stable = train(
+        Price ~ Waterfront + Land.Value + Living.Area + Bathrooms, house,
+        method = "lm",
+        trControl = tr_ctrl
+        )
+
+result_stable = cv_stable$results
+
+results <-resamples(list(backward = cv_back, forward = cv_fwd, stable = cv_stable))
+```
+
+
+In [Multiple Regression Models](@sec-multimodel) and [Model Stability](@sec-stability) sections, three valid models are found, namely, backward model, forward model, and stable model. 
+
+In this section, in-sample performances and out-of-sample performances of the three models were examined.
+
+## In-sample performances
+
+In-sample performances are evaluated by calculating $r^2$ and adjusted $r^2$ values of the three models within the data set (Table \ref{tab:rsquare}). We found that backward and forward models have the same $r^2$ (`r round(rsquare_back, 3)`) and adjusted $r^2$ values (`r round(rsquare_adj_back, 3)`). The stable model have slightly lower $r^2$ and adjusted $r^2$ values than the backward and forward models, but very similar (`r round(rsquare_stable, 3)` and `r round(rsquare_adj_stable, 3)` respectively).
+
+```{=tex}
+\begin{table}[h!]
+  \centering
+    \caption{$r^2$ and adjusted $r^2$}  \label{tab:rsquare}
+    \begin{tabular}{ ccc } 
+      \toprule
+      Models & $r^2$ & Adjusted $r^2$ \\ 
+      \midrule
+      Backward & `r round(rsquare_back, 3)` & `r round(rsquare_adj_back, 3)` \\ 
+      \midrule
+      Forward & `r round(rsquare_fwd, 3)` & `r round(rsquare_adj_fwd, 3)` \\ 
+      \midrule
+      Stable & `r round(rsquare_stable, 3)` & `r round(rsquare_adj_stable, 3)` \\ 
+      \bottomrule
+    \end{tabular}
+\end{table}
+```
+
+
+## Out-of-sample performances
+
+The $10$-fold cross validation shows that backward and forward models have slightly lower averaged RMSE (Root Mean Square Error) and MAE (Mean Absolute Error) than the stable model (Table \ref{tab:error}). Figures of RMSE and MAE further confirm this, despite their large overlaps (Figure A9, A10). 
+
+```{=tex}
+\begin{table}[h!]
+    \centering
+    \caption{RMSE and MAE} \label{tab:error}
+    \begin{tabular}{ ccc } 
+      \toprule
+      Models & RMSE & MAE \\ 
+      \midrule
+      Backward & `r format(result_back[1,2], nsmall = 3)` & `r format(result_back[1,4], nsmall = 3)` \\ 
+      \midrule
+      Forward & `r format(result_fwd[1,2], nsmall = 3)` & `r format(result_fwd[1,4], nsmall = 3)` \\ 
+      \midrule
+      Stable & `r format(result_stable[1,2], nsmall = 3)` & `r format(result_stable[1,4], nsmall = 3)` \\ 
+      \bottomrule
+    \end{tabular}
+\end{table}
+```
+
+
+
+# Discussion, Conclusion, and Limitations
+
+## Discussion
+
+In-sample performance evaluation indicates that the backward and forward models explain the data slightly more than the stable model, due to their higher $r^2$ and adjusted $r^2$ values. However, even though the stable model has lower $r^2$ and adjusted $r^2$ values, it still manages to explain approximately $`r round(rsquare_stable*100, 2)` \%$ (according to its $r^2$ value) or $`r round(rsquare_adj_stable*100, 2)` \%$ (according to its adjusted $r^2$ value) of the total variation in the house price data, which is reasonable.
+
+Out-of-sample performance evaluation shows that the backward and forward models may be slightly more accurate than the stable model due to their lower RMSE and MAE values. Yet, the differences in the error rates are minor (refer back to Table \ref{tab:error}). The accuracy of the stable model is thus ensured.
+
+At the same time, as mentioned in the [Model Stability](@sec-stability) section, the backward and forward models with $13$ parameters are not stable. In comparison, the stable model is more stable, as is selected in $78.00\%$ of bootstrap resamples.
+
+
+## Conclusion
+
+Balancing the results of in-sample performances, out-of-sample performances and stability, we conclude that the stable model may be the most suitable among the three models.
+
+## Limitations
+
+The chosen stable model is a compromise between stability and accuracy. In certain contexts, however, it might be preferable to choose accuracy over stability. Additionally, as mentioned in the [Assumption Checking](@sec-assumption) section, the independence assumption may not be met. Therefore, if more information about the data set is provided, a domain knowledge expert may make better judgement on which model to choose.

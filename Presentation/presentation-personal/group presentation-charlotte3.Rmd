@@ -1,0 +1,167 @@
+
+---
+title: "House Prices in New York "
+author: "Group CC901E2: Sid's"
+date: "`r Sys.Date()`"
+output:
+  revealjs::revealjs_presentation:
+    theme: sky
+    highlight: pygments #syntax highlighting style
+    center: true #whether want to vertically centre content on slides
+---
+ 
+
+
+
+# Page 1
+
+
+The aim for the model is to predict the House Prices in New York City using the House Prices in New York data set obtained from the Group Assignment Github page. However, the data set was original sourced from the mosaic Data package in R, Data on houses in Saratoga County, New York, USA in 2006(SaratogaHouses) collected by Candice Corvetti . The data set contains information about New York Houses including prices of Houses (in Us Dollars), lot size of the house (acres),  number of bedrooms and bathrooms and the type of ultilites in the house, for example the type of heating system. For the model (methodlogy) to predict the House Prices in New York ..
+
+
+
+Data description: where does it come from, what is it about 
+what variables we chose: Price variable is the variable we want to predict 
+How did we do it: 
+
+
+- The aim for the model is to predict the House Price in New York City
+- The data set, House Prices in New York was  obtained from Group Assignment Git Hub Page
+-  However, the data set was original sourced from the mosaic Data package in R, Data on houses in Saratoga County, New York, USA in 2006 (SaratogaHouses) collected by Candice Corvetti
+  
+- The data set contains information about New York Houses including prices of Houses (in Us Dollars), lot size of the house (acres),  number of bedrooms and bathrooms and the type of ultilites in the house, for example the type of heating system
+
+- Price is the dependent variable the model is predicting, with the all other variables except the test variable being used to predict Price
+- the test variable in the data set  was excluded from the model because we do not know the meaning of the  variable
+
+# Page 2
+
+
+
+
+```{r, message=FALSE, echo=FALSE}
+
+library(tidyverse)
+library(ggplot2)
+library(ggfortify)
+house_data = read.delim("../data/housing-prices-ge19.txt", header = TRUE)
+house_data = house_data %>% mutate (
+ Waterfront = as.factor(Waterfront), 
+  New.Construct = as.factor(New.Construct), 
+  Central.Air = as.factor(Central.Air),
+ Fuel.Type = as.factor(Fuel.Type),
+  Heat.Type = as.factor(Heat.Type),
+  Sewer.Type = as.factor(Sewer.Type),
+  Test = as.factor(Test)
+)
+
+glimpse(house_data)
+```
+
+## Basic statistics
+This data set does not contain any missing data however, outliers do exist in this data set. For example a 0- acre lot size cannot exist. Also, it is unlikely that $5000 USD would be enough to purchase a House in New York in 2006.
+
+```{r}
+groups = c("price", "lot_size", "age", "land_value", "pct_college", "living_area", "bedrooms", "rooms")
+summary = house_data %>%
+  select(Price, Lot.Size, Age, Land.Value, Pct.College, Living.Area, Bedrooms, Rooms) %>%
+  summarise_all(list(mean,
+                     sd,
+                     max,
+                     min))
+summaries = c(rep(c("Mean", "SD","Max", "Min"), each=8))
+columns= c(rep(groups, 4))
+summary_data = as.numeric(summary[1,])
+summary_frame <- data.frame(summaries, columns, summary_data)
+
+summary_wide = summary_frame %>%
+  tidyr::pivot_wider(
+    id_cols = columns,
+    names_from = summaries,
+    values_from = summary_data
+  )
+summary_wide$Mean = round(summary_wide$Mean, 2)  
+summary_wide$SD = round(summary_wide$SD, 2)
+summary_wide$Max = format(round(summary_wide$Max, 2), nsmall = 2)
+summary_wide$Min = format(round(summary_wide$Min, 2), nsmall = 2)
+knitr::kable(summary_wide)
+
+
+
+
+
+```
+## Scatter plot
+Based on the scatter plot, Living Area is the most likely to have linear relation with House Price. Thus,it will be the most important variable in the model to predict house prices. 
+```{r}
+house_data%>%
+  drop_na() %>%
+  pivot_longer(cols = c (Lot.Size, Age, Land.Value, Pct.College, Living.Area, Bedrooms, Rooms),
+               names_to = "variables", values_to = "values") %>%
+  ggplot()+
+  aes(x= values, y = Price)+
+  geom_point(size = 0.3, alpha=0.3)+
+  facet_wrap(~ variables, nrow=2, scales = "free_x")+
+  theme_bw()+
+  labs(x= "Variables", y = "House Price (Thousand USD)")
+```
+## scatter/box plot of variables --> Yi had a really nice won with all the variables 
+The data for number of rooms does not contain any outliers. Hnce, it was used to visualize the distribution of housing prices. The box plot demonstrates an increase in the number of rooms of a house,  increases the average house price.  
+
+```{r}
+max(house_data$Rooms)
+min(house_data$Rooms)
+
+
+
+house_data %>%
+  mutate(price = house_data$Price/1000)%>%
+  ggplot() +
+  aes(x = as.factor(Rooms), y= price, color = Rooms) +
+  geom_boxplot() +
+  theme_classic() +
+  labs(x = "Number of Rooms", y = "House Price (Thousand USD)")
+
+
+
+  
+
+
+```
+
+```{r}
+
+
+house_data %>%
+  drop_na() %>%
+  pivot_longer(cols = c(Lot.Size, Age, Land.Value, Pct.College, Living.Area, Bedrooms, Rooms),
+               names_to = "variables", values_to = "values") %>%
+  ggplot()+
+  aes(x= values, y = (Price)/1000)+
+  geom_point(size = 0.3, alpha=0.3)+
+  facet_wrap(~ variables, nrow=2, scales = "free_x")+
+  theme_bw()+
+  labs(x= "Variables", y = "House Price (Thousand USD)")
+  
+
+```
+# Page 3
+
+
+
+# Page 4
+
+
+# Page 5
+
+
+
+# Page 6
+
+
+
+# References
+Data collected by Candice Corvetti and used in the "Stat 101" case study "How much is a Fireplace Worth". See also https://www.saratogacountyny.gov/departments/real-property-tax-service-agency/
+
+El Hattab, Hakim, and JJ Allaire. 2017. Revealjs: R Markdown Format for Reveal.js Presentations. https://github.com/rstudio/revealjs.
+

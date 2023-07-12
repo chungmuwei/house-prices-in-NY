@@ -1,0 +1,53 @@
+---
+title: "Title"
+author: "Author"
+institute: "Institute name"
+format:
+  revealjs:
+    self-contained: true
+    fig-format: retina
+    toc: true
+    toc-depth: 1
+    number-sections: false
+    code-line-numbers: false
+    slide-number: c
+    scrollable: false
+    pdf-max-pages-per-slide: 1
+    history: false # don't add each slide to browser history
+execute:
+  echo: false
+---
+
+## Double "##"
+
+Doube "##" will create a new page which you can fit your content
+
+Quarto enables you to weave together content and executable code into a finished presentation. To learn more about Quarto presentations see <https://quarto.org/docs/presentations/>.
+
+More usage can also be found in Garth's page: <https://github.com/garthtarr/sydney_quarto/blob/main/presentation.qmd>
+
+
+# A Single "#"
+It will create a cover page, and somehow generate a table of content after the title page
+
+
+## Bullets
+
+When you click the **Render** button a document will be generated that includes:
+
+-   Content authored with markdown
+-   Output from executable code
+
+## Code
+
+When you click the **Render** button a presentation will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+## 
+If you do not put a name for this section, it will leave the title empty
+```{r}
+ a = c(1,2,2,3,3,4,4,5,5)
+
+hist(a)
+
+
+```

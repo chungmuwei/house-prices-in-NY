@@ -1,0 +1,6 @@
+[1,"Installing 'pinp' ...\n"]
+[2,"trying URL 'https://cran.rstudio.com/bin/macosx/contrib/4.2/pinp_0.0.10.tgz'\n"]
+[2,"Content type 'application/x-gzip' length 217840 bytes (212 KB)\n==================================================\ndownloaded 212 KB\n\n"]
+[1,"The downloaded binary packages are in\n"]
+[1,"\t/var/folders/zq/54sr8qg503v263xgxswt347h0000gn/T//RtmpMMGxex/downloaded_packages\n"]
+[2,"\n\n✔ Package 'pinp' successfully installed.\n"]

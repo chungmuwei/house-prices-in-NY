@@ -1,0 +1,250 @@
+---
+title: Appendices
+
+# Use letters for affiliations
+author:
+  - name: CC901E2
+    affiliation: a
+
+address:
+  - code: a
+    address: The University of Sydney
+
+# Optional: line of arbitrary text with additional information.
+# Could be used, for example, to mention the bibliographic info in a post-print.
+# If not specified, defaults to "This version was compiled on \today"
+date_subtitle: \today
+
+# For footer text  TODO(fold into template, allow free form two-authors)
+lead_author_surname: CC901E2
+
+
+# Paper size for the document, values of letter and a4
+papersize: letter
+
+# Font size of the document, values of 9pt (default), 10pt, 11pt and 12pt
+fontsize: 9pt
+
+# Optional: Force one-column layout, default is two-column
+#one_column: true
+
+# Optional: Enables lineno mode, but only if one_column mode is also true
+#lineno: true
+
+# Optional: Enable one-sided layout, default is two-sided
+#one_sided: true
+
+# Optional: Enable section numbering, default is unnumbered
+numbersections: false
+
+# Optional: Specify the depth of section number, default is 5
+#secnumdepth: 5
+
+# Optional: Skip inserting final break between acknowledgements, default is false
+skip_final_break: true
+
+# Optional: Bibliography 
+bibliography: ref
+
+# Optional: Enable a 'Draft' watermark on the document
+#watermark: true
+
+# Customize footer, eg by referencing the vignette
+footer_contents: "DATA 2902: Executive Summary Report"
+
+# Produce a pinp document
+# output: 
+#     pinp::pinp
+
+output:
+  pinp::pinp
+    
+
+# # Required: Vignette metadata for inclusion in a package.
+# vignette: >
+#   %\VignetteIndexEntry{YourPackage-vignetteentry}
+#   %\VignetteKeywords{YourPackage, r, anotherkeyword}
+#   %\VignettePackage{YourPackage}
+#   %\VignetteEngine{knitr::rmarkdown}
+---
+
+```{r message=FALSE, warning = FALSE, echo = FALSE}
+# Hide all the codes
+knitr::opts_chunk$set(echo=FALSE)
+```
+
+```{r message=FALSE, warning = FALSE}
+# Load packages here
+library(tidyverse)
+library(ggplot2)
+library(ggfortify)
+library(dplyr)
+library(ISLR)
+library(sjPlot)
+library(leaps)
+library(GGally)
+library(caret)
+library(mplot)
+library(lmSubsets)
+```
+
+```{r}
+# The original data is loaded here
+#| output: FALSE
+house = read.delim("housing-prices-ge19.txt", 
+                    header = TRUE)
+# convert data types
+house = house %>% mutate (
+  Waterfront = as.factor(Waterfront),
+  New.Construct = as.factor(New.Construct),
+  Central.Air = as.factor(Central.Air),
+  Fuel.Type = as.factor(Fuel.Type),
+  Heat.Type = as.factor(Heat.Type),
+  Sewer.Type = as.factor(Sewer.Type),
+  Test = as.factor(Test)
+)
+
+# Remove the Test column, because we do not have the metadata
+house = house %>%
+  select(-Test)
+```
+
+```{r}
+# backward AIC
+
+# Sample Mean of Price
+M0_back = lm(house$Price ~ 1, data = house)
+# Price against everything except itself
+M1_back = lm(house$Price ~ ., data = house)
+
+# Dropping of variables backwards until lowest AIC is reached
+step.back.aic = step(M1_back,
+                     direction = "backward",
+                     trace = FALSE)
+
+```
+
+```{r}
+# Forward AIC
+
+# Sample Mean of Price
+M0_fwd = lm(house$Price ~ 1, data = house)
+# Price against everything except itself
+M1_fwd = lm(house$Price ~ ., data = house)
+
+# Dropping of variables forwards until lowest AIC is reached
+step.fwd.aic = step(M0_fwd, scope = list(lower = M0_fwd, upper = M1_fwd),
+                     direction = "forward",
+                     trace = FALSE)
+```
+
+```{r}
+# Stable model
+stable_model = lm(Price ~ Waterfront + Land.Value + Living.Area + Bathrooms, data = house)
+```
+
+## Introduction
+
+## Analysis
+
+```{r, fig.height = 2, fig.width = 3}
+#| label: fig-backassumption
+#| fig-cap: Backward AIC Assumptions Checking
+# Price against everything except itself
+M1_back = lm(house$Price ~ ., data = house)
+# Dropping of variables backwards until lowest AIC is reached
+step.back.aic = step(M1_back,
+                     direction = "backward",
+                     trace = FALSE)
+autoplot(step.back.aic, which = c(1,2))
+```
+
+```{r, fig.height = 2, fig.width = 3}
+#| label: fig-fwdassumption
+#| fig-cap: Forward AIC Assumptions Checking
+# Sample Mean of Price
+M0_fwd = lm(house$Price ~ 1, data = house)
+# Price against everything except itself
+M1_fwd = lm(house$Price ~ ., data = house)
+# Dropping of variables forwards until lowest AIC is reached
+step.fwd.aic = step(M0_fwd, scope = list(lower = M0_fwd, upper = M1_fwd),
+                     direction = "forward",
+                     trace = FALSE)
+autoplot(step.fwd.aic, which = c(1,2))
+```
+
+```{r, fig.height = 2, fig.width = 3}
+#| label: fig-exhaustive
+#| fig-cap: Visualisation of Model Sizes with AIC and RSS
+exhaustive_out = lmSubsets::lmSubsets(Price ~ ., data = house,
+                                      nbest = 1, nmax = NULL,
+                                      method = "exhaustive")
+plot(exhaustive_out, penalty = "AIC")
+```
+
+
+## Model Stability
+
+
+
+## 10-fold cross validation
+```{r}
+set.seed(2022)
+
+# set 10 folds cross validation
+tr_ctrl = trainControl(
+    method = "cv", number = 10,
+    verboseIter = FALSE
+)
+
+# backward
+cv_back = train(
+        Price ~ Lot.Size + Waterfront + Age + Land.Value + 
+                New.Construct + Central.Air + Heat.Type + Living.Area + Bedrooms +                 Bathrooms + Rooms,
+        house,
+        method = "lm",
+        trControl = tr_ctrl
+        )
+
+result_back = cv_back$results
+
+
+# forward
+cv_fwd = train(
+        Price ~ Living.Area + Land.Value + Bathrooms + 
+                Waterfront + New.Construct + Heat.Type + Lot.Size + Central.Air + 
+                Age + Rooms + Bedrooms,
+        house,
+        method = "lm",
+        trControl = tr_ctrl
+        )
+
+result_fwd = cv_fwd$results
+
+# stable
+cv_stable = train(
+        Price ~ Waterfront + Land.Value + Living.Area + Bathrooms, house,
+        method = "lm",
+        trControl = tr_ctrl
+        )
+
+result_stable = cv_stable$results
+
+results <-resamples(list(backward = cv_back, forward = cv_fwd, stable = cv_stable))
+```
+
+```{r}
+#| label: fig-rmse
+#| fig-cap: RMSE
+
+ggplot(results, metrics = "RMSE") +
+  labs(y = "")
+```
+
+```{r} 
+#| label: fig-maw
+#| fig-cap: MAE
+
+ggplot(results, metrics = "MAE") +
+  labs(y = "")
+```

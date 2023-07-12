@@ -1,0 +1,578 @@
+---
+title: "House Prices in New York"
+author: "Group CC901E2"
+institute: "The University of Sydney"
+format:
+  revealjs:
+    self-contained: true
+    fig-format: retina
+    toc: true
+    toc-depth: 1
+    number-sections: false
+    code-line-numbers: false
+    slide-number: c
+    scrollable: true
+    pdf-max-pages-per-slide: 1
+    history: false # don't add each slide to browser history
+    
+execute:
+  echo: false
+  warning: false # do not show warning in the chunk
+  message: false # do not show message in the chunk
+---
+
+# Introduction
+
+```{r message=FALSE}
+# Load packages here
+library(tidyverse)
+library(ggplot2)
+library(ggfortify)
+library(dplyr)
+library(ISLR)
+library(sjPlot)
+library(leaps)
+library(GGally)
+library(caret)
+library(mplot)
+library(lmSubsets)
+```
+
+```{r, message=FALSE}
+# The original data is loaded here
+#| output: FALSE
+house = read.delim("housing-prices-ge19.txt", 
+                    header = TRUE)
+# convert data types
+house = house %>% mutate (
+  Waterfront = as.factor(Waterfront),
+  New.Construct = as.factor(New.Construct),
+  Central.Air = as.factor(Central.Air),
+  Fuel.Type = as.factor(Fuel.Type),
+  Heat.Type = as.factor(Heat.Type),
+  Sewer.Type = as.factor(Sewer.Type),
+  Test = as.factor(Test)
+)
+
+# Remove the Test column, because we do not have the metadata
+house = house %>%
+  select(-Test)
+
+# # Trying to filter some of the variables 
+# house_clean = house %>% 
+#   dplyr::mutate(
+#     Lot.Size = case_when(
+#     Lot.Size < 1000 ~ NA_real_,
+#      is.na(Lot.Size) ~ NA_real_,
+#      TRUE ~ Lot.Size
+#     )
+#   ) %>% drop_na(Lot.Size)
+# summary(house_clean)
+
+# clean names
+# house = janitor::clean_names(house)
+```
+
+## Topics 
+
+```{r}
+# I would suggest this part using bullet points in this section
+
+# if one page cannot fit, can use more than one page by "##"
+
+# Indeed, if you put too many words, they even could not fit in one page
+```
+
+- The aim for the model is to predict the House Price in New York 
+
+-  The data set was original sourced from the mosaic Data package in R
+  
+- The data set contains information about New York Houses including prices of Houses (in Us Dollars), lot size of the house (acres),  number of bedrooms and bathrooms and the type of heating system
+
+
+## Methodology
+
+- to achieve our aim we perform several models 
+- then our models were evaluated using RMSE, MAE and adjusted $r^2$ to find the most useful and appropriate model to use 
+
+
+# Basic Summary of the Data
+
+## Data Structure
+- it is a large data set with 1,734 rows and 16 columns
+- 16 variables,  10 numeric variables and 6 factor variables 
+- the test variable was removed from the data set because we do not know the meaning of the variable 
+```{r}
+glimpse(house)
+
+
+```
+
+## Mean, SD, Max, Min, etc.
+
+This data set does not contain any missing data however, outliers do exist in this data set. For example a 0- acre lot size cannot exist. Also, it is unlikely that $5000 USD would be enough to purchase a House in New York in 2006.
+
+```{r}
+groups = c("price", "lot size", "age", "land value", "pct college", "living area", "bedrooms", "rooms")
+summary = house %>%
+  select(Price, Lot.Size, Age, Land.Value, Pct.College, Living.Area, Bedrooms, Rooms) %>%
+  summarise_all(list(mean,
+                     sd,
+                     max,
+                     min))
+summaries = c(rep(c("Mean", "SD","Max", "Min"), each=8))
+columns= c(rep(groups, 4))
+summary_data = as.numeric(summary[1,])
+summary_frame <- data.frame(summaries, columns, summary_data)
+
+summary_wide = summary_frame %>%
+  tidyr::pivot_wider(
+    id_cols = columns,
+    names_from = summaries,
+    values_from = summary_data
+  )
+summary_wide$Mean = round(summary_wide$Mean, 2)  
+summary_wide$SD = round(summary_wide$SD, 2)
+summary_wide$Max = format(round(summary_wide$Max, 2), nsmall = 2)
+summary_wide$Min = format(round(summary_wide$Min, 2), nsmall = 2)
+knitr::kable(summary_wide)
+```
+
+
+# Simple Regression
+
+## General view
+
+```{r}
+# difference begins
+house_num = subset(house,select = c(Price, Lot.Size, Age, Land.Value,Living.Area, Pct.College, Bedrooms, Fireplaces, Bathrooms, Rooms))
+```
+
+```{r}
+cor_house = cor(house_num)
+
+melted_cor_house = cor_house %>%
+ data.frame() %>%
+ rownames_to_column(var = "var1") %>%
+ gather(key = "var2", value = "cor", -var1)
+```
+
+```{r message = FALSE}
+# library(GGally)
+# GGally::ggpairs(house)
+```
+
+```{r}
+# ggplot(data = melted_cor_house,
+#  aes(x=var1, y=var2, fill=cor)) +
+#  geom_tile() + theme_minimal(base_size = 22)+
+#  scale_fill_gradient2(
+#  low = "blue", high = "red", mid = "white",
+#  midpoint = 0, limit = c(-1,1)) +
+#  theme(axis.text.x = element_text(angle = 90))
+```
+
+```{r}
+qtlcharts::iplotCorr(house_num)
+```
+
+## Variable chosen
+
+Since our dependent variable is 'Price', based on the graph, it can easily found that the variable 'Living.Area' may be the most affected by 'Price' (0.71, with dark pink).
+
+*Dependent variable*: Price
+
+*Independent variable*: Living.Area
+
+```{r}
+lm1 = lm(Price ~ Living.Area, 
+ data = house)
+lm1
+```
+
+## Assumption checking
+
+The residuals $\varepsilon_i$are iid${\mathcal N}(0,\sigma^2)$ and there is a linear relationship between y and x.
+
+
+```{r}
+library(ggfortify)
+autoplot(lm1, which = 1:2) + theme_bw()
+```
+## Assumption checking
+-   Linearity: The Auxiliary line is reasonably well plotted like a straight line (with no obvious curve), so there is no obvious pattern in the residual vs fitted values plot.
+
+-   Homoskedasticity: It appears the residuals are getting spread-out and do not appear to be fanning out or changing their variability over the range of the fitted values so the constant error variance assumption is met.
+
+-   Normality: in the QQ plot, the points are reasonably close to the diagonal line. Although there seems to be some outliers exist, the data-set is relatively large(with 1733 observations). Thus, the normality assumption is approximately satisfied.
+
+
+## Simple regression model
+
+```{r}
+plot(Price ~ Living.Area, 
+ data = house)
+abline(lm1, lwd = 3, col = "red")
+```
+*Conclusion：*
+
+As the assumption all met, it can be concluded that our simple estimated model is $\widehat{Price} = `r format(lm1$coefficients[[1]], scientific = FALSE, nsmall = 3)` + `r round(lm1$coefficients[[2]],3)` \times Living.Area$
+
+
+# Multiple Regression
+
+## Backward AIC
+```{r}
+# Sample Mean of Price
+M0_back = lm(house$Price ~ 1, data = house)
+# Price against everything except itself
+M1_back = lm(house$Price ~ ., data = house)
+
+# Rounds summary of M0 to 3 signficant figures
+rounded_back_M0 = round(summary(M0_back)$coef,3)
+# Rounds summary of M1 to 3 signficant figures
+rounded_back_M1 = round(summary(M1_back)$coef,3)
+
+# Dropping of variables backwards until lowest AIC is reached
+step.back.aic = step(M1_back,
+                     direction = "backward",
+                     trace = FALSE)
+sum_back = summary(step.back.aic)
+```
+
+```{r}
+knitr::kable(round(step.back.aic$coefficients,3))
+```
+
+## Assumption Checking for Backward AIC (1)
+```{r}
+house %>%
+  drop_na() %>%
+  pivot_longer(cols = c(Lot.Size, Age, Land.Value, Living.Area, Bedrooms, 
+                        Bathrooms, Rooms),
+               names_to = "variables", values_to = "values") %>%
+  ggplot()+
+  aes(x= values, y = (Price)/1000)+
+  geom_point(size = 0.3, alpha=0.3)+
+  facet_wrap(~ variables, nrow=2, scales = "free_x")+
+  theme_bw()+
+  labs(x= "Variables", y = "House Price (Thousand USD)")
+```
+
+## Assumption Checking for Backward AIC (2)
+```{r}
+autoplot(step.back.aic, which = c(1,2))
+```
+
+## Forward AIC
+```{r}
+# Sample Mean of Price
+M0_fwd = lm(house$Price ~ 1, data = house)
+# Price against everything except itself
+M1_fwd = lm(house$Price ~ ., data = house)
+
+# Rounds summary of M0 to 3 significant figures
+rounded_fwd_M0 = round(summary(M0_fwd)$coef,3)
+# Rounds summary of M1 to 3 significant figures
+rounded_fwd_M1 = round(summary(M1_fwd)$coef,3)
+
+# Dropping of variables forwards until lowest AIC is reached
+step.fwd.aic = step(M0_fwd, scope = list(lower = M0_fwd, upper = M1_fwd),
+                     direction = "forward",
+                     trace = FALSE)
+sum_fwd = summary(step.fwd.aic)
+
+knitr::kable(round(step.fwd.aic$coefficients,3))
+```
+     
+## Assumption Checking for Forward AIC (1)
+```{r}
+house %>%
+  drop_na() %>%
+  pivot_longer(cols = c(Living.Area, Land.Value, Bathrooms,
+                        Lot.Size, Age, Rooms, Bathrooms),
+               names_to = "variables", values_to = "values") %>%
+  ggplot()+
+  aes(x= values, y = (Price)/1000)+
+  geom_point(size = 0.3, alpha=0.3)+
+  facet_wrap(~ variables, nrow=2, scales = "free_x")+
+  theme_bw()+
+  labs(x= "Variables", y = "House Price (Thousand USD)")
+```
+
+## Assumption Checking for Forward AIC (2)
+```{r}
+autoplot(step.fwd.aic, which = c(1,2)) 
+```
+
+## Exhaustive Search
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+# Sample Mean of Price
+M0_exh = lm(house$Price ~ 1, data = house)
+# Price against everything except itself
+M1_exh = lm(house$Price ~ ., data = house)
+
+# Exhaustive search
+# set.seed(5)
+# exh = (regsubsets(Price ~ ., data = house, nvmax = 14))
+# x = summary(exh)
+
+# rsq_sum = x$rsq
+
+# sum_exh = summary(exh)$outmat
+
+exhaustive_out = lmSubsets::lmSubsets(Price ~ ., data = house,
+                                      nbest = 1, nmax = NULL,
+                                      method = "exhaustive")
+plot(exhaustive_out, penalty = "AIC")
+```
+## Fitted Model 
+Price ~ Lot.Size + Waterfront1 + Age + Land.Value + New.Construct1 +
+Central.Air1 + Fuel.TypeGas + Fuel.TypeOil + Heat.TypeHot Water + Heat.TypeNone + Living.Area + Bedrooms + Bathrooms + Rooms
+   
+# Stable Model
+
+```{r, echo=FALSE}
+load("house_main.RData")
+```
+
+## Variable Inclusion Plot {.smaller}
+
+```{r, fig.fullwidth=TRUE}
+plot(vis.h, which = "vip", interactive = FALSE, legend.position = "bottom")
+```
+
+## Variable Inclusion Plot: Insight {.smaller}
+
+-   `Land.Value`, `Living.Area`, `Bathrooms`, `New.Construct`, `Waterfront` are the five most important variables for predicting `Price`.
+-   The non-monotonic nature of the `HeatTypeHot.Air` line indicates that a group of variables contains similar information to it.
+-   The path of `Sewer.TypePublic` and all levels of `FuelType` lie below the path of redundant variable, which means they are included in models by chance (don't provide any useful information).
+
+## Model stability Plot {.smaller}
+
+-   There appears to be dominant models in models of size **two, three, and five** (including the intercept), as demonstrated by one of the circles being substantially larger than the other circles with models of the same size.
+-   The stepwise model (size = 14) is not stable as all circles of that size are small.
+
+```{r, fig.fullwidth=TRUE}
+plot(vis.h, highlight = "Living.Area", which = "boot", interaction = F, max.circle = 10, seed = 2022, legend.position = "bottom")
+```
+
+## Model stability Plot {.smaller}
+```{r}
+print(vis.h, min.prob = 0.5)
+```
+
+- The simple regression model $Price \sim Living.Area$ model is stable as it is always selected in bootstrap resamples. 
+- The $Price \sim Waterfront1 + Land.Value + Living.Area + Bathrooms$ model is selected in 78% of bootstrap resamples, which strikes the balance between accuracy and stability.
+
+## Assumption Checking for the stable model
+
+```{r}
+stable_model = lm(Price ~ Waterfront + Land.Value + Living.Area + Bathrooms, data = house)
+autoplot(stable_model, which = c(1,2)) 
+```
+
+
+# Discussion: model evaluations
+
+Which model is better?
+
+## Our models - simple model
+
+$$\widehat{Price} = `r format(lm1$coefficients[[1]], scientific = FALSE, nsmall = 3)` + `r round(lm1$coefficients[[2]],3)` \times Living.Area$$
+
+```{r}
+plot(Price ~ Living.Area, 
+ data = house)
+abline(lm1, lwd = 3, col = "red")
+```
+
+## Our models - backward and forward models
+
+::: columns
+::: {.column width="50%"}
+
+- Backward stepwise regression models: 
+
+```{r}
+knitr::kable(round(step.back.aic$coefficients,3))
+```
+:::
+
+::: {.column width="50%"}
+
+- Forward stepwise regression models: 
+
+```{r}
+knitr::kable(round(step.fwd.aic$coefficients,3))
+```
+:::
+:::
+    
+## Our models - stable model
+- Stable: $\widehat{Price}$ = Waterfront + Land.Value + Living.Area + Bathrooms
+
+```{r}
+knitr::kable(round(stable_model$coefficients,3))
+```
+
+## r-square and adjusted r-square
+* What percentage of the total variation of observed house prices is explained by our models
+  + $r^2$
+  + Adjusted $r^2$
+    - Take the number of predictors in models into account
+
+##
+- Compare $r^2$ and adjusted-$r^2$ of our models:
+```{r}
+# r^2 and adjusted r^2 of simple model
+rsquare_simple = summary(lm1)$r.square
+rsquare_adj_simple = summary(lm1)$adj.r.square
+
+
+# r^2 and adjusted r^2 of backward
+rsquare_back = summary(step.back.aic)$r.square
+rsquare_adj_back = summary(step.back.aic)$adj.r.square
+
+# r^2 and adjusted r^2 of forward
+rsquare_fwd = summary(step.fwd.aic)$r.square
+rsquare_adj_fwd = summary(step.fwd.aic)$adj.r.square
+
+# r^2 and adjusted r^2 of stable
+rsquare_stable = summary(stable_model)$r.square
+rsquare_adj_stable = summary(stable_model)$adj.r.square
+
+
+
+# make a table
+models = c("Simple", "Backward", "Forward", "Stable")
+r_square = c(rsquare_simple, rsquare_back, rsquare_fwd, rsquare_stable)
+r_adj_square = c(rsquare_adj_simple, rsquare_adj_back, rsquare_adj_fwd, rsquare_adj_stable)
+
+rsquare_table <- data.frame(models, r_square, r_adj_square)
+
+## round into three decimal
+rsquare_table = rsquare_table %>%
+  mutate_if(is.numeric, 
+            round, 
+            digits = 3)
+
+knitr::kable(rsquare_table, col.names = c("Models", "r-square", "Adjusted r-square"))
+```
+
+## Error rate
+* How different it is between predicted house prices by our models and the actual house prices
+  + MAE: mean absolute error
+  + RMSE: root mean square error
+
+## k-fold cross validation
+- $k$-fold cross validation estimation^[<https://pub.towardsai.net/k-fold-cross-validation-for-machine-learning-models-918f6ccfd6d>]:
+![](k-fold.png){width=60%}
+
+## 10-fold cross validation
+```{r}
+set.seed(2022)
+
+# set 10 folds cross validation
+tr_ctrl = trainControl(
+    method = "cv", number = 10,
+    verboseIter = FALSE
+)
+
+# simple
+cv_simple = train(
+        Price ~ Living.Area, house,
+        method = "lm",
+        trControl = tr_ctrl
+        )
+
+result_simple = cv_simple$results
+
+
+# backward
+cv_back = train(
+        Price ~ Lot.Size + Waterfront + Age + Land.Value + 
+                New.Construct + Central.Air + Heat.Type + Living.Area + Bedrooms +                 Bathrooms + Rooms,
+        house,
+        method = "lm",
+        trControl = tr_ctrl
+        )
+
+result_back = cv_back$results
+
+
+# forward
+cv_fwd = train(
+        Price ~ Living.Area + Land.Value + Bathrooms + 
+                Waterfront + New.Construct + Heat.Type + Lot.Size + Central.Air + 
+                Age + Rooms + Bedrooms,
+        house,
+        method = "lm",
+        trControl = tr_ctrl
+        )
+
+result_fwd = cv_fwd$results
+
+
+# stable
+cv_stable = train(
+        Price ~ Waterfront + Land.Value + Living.Area + Bathrooms, house,
+        method = "lm",
+        trControl = tr_ctrl
+        )
+
+# extract the results
+result_stable = cv_stable$results
+
+```
+
+```{r}
+# make a new data frame
+
+models = c("Simple", "Backward", "Forward", "Stable")
+errors = c("RMSE", "MAE")
+
+frame_models = c( rep(models, each = length(errors)) )
+
+frame_errors = c( rep(errors, length(models)) )
+
+frame_data = c(result_simple[1,2], result_simple[1,4],
+               result_back[1,2], result_back[1,4],
+               result_fwd[1,2], result_fwd[1,4],
+               result_stable[1,2], result_stable[1,4]
+                  )
+
+evaluation_selected <- data.frame(frame_models, frame_errors, frame_data)
+
+
+# visualise the errors
+evaluation_selected %>%
+  ggplot() +
+  aes(x = frame_models, y = frame_data) +
+  facet_wrap(~frame_errors, scales = "free_y") +
+  geom_boxplot() + 
+  labs(x = "", y = "")
+```
+
+
+
+# Conclusion
+
+* The stable model may be the best among the four models:
+  + It is the most stable (model is selected in $78\%$ of bootstrap resamples)
+  + Assumption plots look fine
+  + Sill relatively high $r^2$ (`r round(summary(stable_model)$r.square, 3)`) and adjusted-$r^2$ (`r round(summary(stable_model)$adj.r.square, 3)`) values 
+  + Does not have much higher errors than backward and forward models
+
+# Future Research
+
+* As shown, the stable model has relatively higher error rates and slightly lower $r^2$ and adjusted-$r^2$ values than the backward and forward models. It is a compromise between accuracy and stability
+
+* If more information about the dataset is provided, a domain knowledge expert may make better judgement of which model to choose
+  
+# References
+
+## 
+
+-   Data collected by Candice Corvetti and used in the "Stat 101" case study "How much is a Fireplace Worth". See also <https://www.saratogacountyny.gov/departments/real-property-tax-service-agency/>
+-   El Hattab, Hakim, and JJ Allaire. 2017. Revealjs: R Markdown Format for Reveal.js Presentations. <https://github.com/rstudio/revealjs>.

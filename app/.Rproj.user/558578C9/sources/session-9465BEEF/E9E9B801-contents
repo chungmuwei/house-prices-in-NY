@@ -1,0 +1,17 @@
+library(tidyverse)
+
+# Read house data
+house <- readr::read_tsv("data/housing-prices-ge19.txt")
+
+# convert data types and remove Test column
+house = house %>% mutate (
+  Waterfront = as.factor(Waterfront),
+  New.Construct = as.factor(New.Construct),
+  Central.Air = as.factor(Central.Air),
+  Fuel.Type = as.factor(Fuel.Type),
+  Heat.Type = as.factor(Heat.Type),
+  Sewer.Type = as.factor(Sewer.Type),
+) %>% select(-Test)
+
+# fit linear regression model
+house_fit = lm(Price ~ Waterfront + Land.Value + Living.Area + Bathrooms, data = house)

@@ -1,0 +1,68 @@
+---
+title: "Group contract and EDA"
+format:
+  docx:
+    toc: false
+    number-sections: true
+    highlight-style: github
+---
+
+# Group Contract
+
+**Group:** CC901E2
+
+**Name:** <ENTER YOUR NAME>
+
+**GitHub link:** <https://github.sydney.edu.au/yzhe2994/CC901E2>
+
+------------------------------------------------------------------------
+
+I agree to:
+
+-   Abide by the terms of this contract in relation to the group assessment for DATA2902.
+
+-   Store all my written and code contributions to the assessment in the GitHub repository.
+
+-   Keep a record of my other contributions to the assessment (e.g. discussions, emails, meetings attended). A copy of this may be requested by the coordinator.
+
+-   Abide by the values outlined in the [Student Charter](https://www.sydney.edu.au/policies/showdoc.aspx?recnum=PDOC2011/215&RendNum=0) by working collaboratively with other students, acting with integrity and honesty throughout the working process.
+
+-   Communicate in two main ways: discussions and questions on Facebook messenger and online meetings on Zoom where all members work together. Email and GitHub are other communication sources that can be used.
+
+-   Check Facebook messenger and Email daily, and check GitHub twice a week. When deemed necessary, zoom meetings will be conducted, arranged via Facebook Messenger.
+
+-   Attend labs in the weeks before the tasks are due and maintain a quick review after our lab each week. In addition to this, hold a weekly meeting via zoom for deeper discussion.
+
+I understand that:
+
+-   My agreement to these terms is indicated through the act of submitting this in Canvas.
+
+-   If I fail to meet my obligations as detailed in this group contract then I have failed to meet the assessment requirements for DATA2902 and may be awarded a mark of zero for some or all of the project components.
+
+# Exploratory data analysis
+
+```{r "setup"}
+#| message: FALSE
+library(tidyverse)
+library(ggfortify)
+```
+
+```{r "read-data"}
+#| output: FALSE
+house = read.delim("../../data/housing-prices-ge19.txt", 
+                    header = TRUE)
+# convert data types
+house = house %>% mutate (
+  Waterfront = as.factor(Waterfront),
+  New.Construct = as.factor(New.Construct),
+  Central.Air = as.factor(Central.Air),
+  Fuel.Type = as.factor(Fuel.Type),
+  Heat.Type = as.factor(Heat.Type),
+  Sewer.Type = as.factor(Sewer.Type),
+  Test = as.factor(Test)
+)
+
+glimpse(house)
+```
+
+\<DO YOUR INDIVIDUAL EDA HERE\>

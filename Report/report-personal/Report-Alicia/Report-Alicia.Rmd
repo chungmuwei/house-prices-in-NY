@@ -1,0 +1,175 @@
+---
+title: House Prices in New York
+
+# Use letters for affiliations
+author:
+  - name: CC901E2
+    affiliation: a
+    
+address:
+  - code: a
+    address: The University of Sydney
+
+# Optional: line of arbitrary text with additional information.
+# Could be used, for example, to mention the bibliographic info in a post-print.
+# If not specified, defaults to "This version was compiled on \today"
+date_subtitle: \today
+
+# For footer text  TODO(fold into template, allow free form two-authors)
+lead_author_surname: Author and Author
+
+# Place eg a DOI URL or CRAN Package URL here
+#doi_footer: "https://cran.r-project.org/package=YourPackage"
+
+# Abstract
+abstract: |
+  Abstract here
+  
+# # Optional: Acknowledgements
+# acknowledgements: |
+#   This template package builds upon, and extends, the work of the excellent
+#   [rticles](https://cran.r-project.org/package=rticles) package, and both packages rely on the
+#   [PNAS LaTeX](http://www.pnas.org/site/authors/latex.xhtml) macros. Both these sources are
+#   gratefully acknowledged as this work would not have been possible without them.  Our extensions
+#   are under the same respective licensing term
+#   ([GPL-3](https://www.gnu.org/licenses/gpl-3.0.en.html) and
+#   [LPPL (>= 1.3)](https://www.latex-project.org/lppl/)).
+# # Optional: One or more keywords
+
+keywords:
+  - keywords1
+  - keywords2
+  - keywords3
+  - keywords4
+  - keywords5
+
+# Paper size for the document, values of letter and a4
+papersize: letter
+
+# Font size of the document, values of 9pt (default), 10pt, 11pt and 12pt
+fontsize: 9pt
+
+# Optional: Force one-column layout, default is two-column
+#one_column: true
+
+# Optional: Enables lineno mode, but only if one_column mode is also true
+#lineno: true
+
+# Optional: Enable one-sided layout, default is two-sided
+#one_sided: true
+
+# Optional: Enable section numbering, default is unnumbered
+numbersections: true
+
+# Optional: Specify the depth of section number, default is 5
+#secnumdepth: 5
+
+# Optional: Skip inserting final break between acknowledgements, default is false
+skip_final_break: true
+
+# Optional: Bibliography 
+bibliography: ref
+
+# Optional: Enable a 'Draft' watermark on the document
+#watermark: true
+
+# Customize footer, eg by referencing the vignette
+footer_contents: "DATA 2902: Executive Summary Report"
+
+# Produce a pinp document
+# output: 
+#     pinp::pinp
+
+output:
+  pinp::pinp
+    
+
+# # Required: Vignette metadata for inclusion in a package.
+# vignette: >
+#   %\VignetteIndexEntry{YourPackage-vignetteentry}
+#   %\VignetteKeywords{YourPackage, r, anotherkeyword}
+#   %\VignettePackage{YourPackage}
+#   %\VignetteEngine{knitr::rmarkdown}
+
+---
+
+```{r message=FALSE, warning = FALSE, echo = FALSE}
+# Hide all the codes
+knitr::opts_chunk$set(echo=FALSE)
+```
+
+```{r message=FALSE, warning = FALSE}
+# Load packages here
+library(tidyverse)
+library(ggplot2)
+library(ggfortify)
+library(dplyr)
+library(ISLR)
+library(sjPlot)
+library(leaps)
+library(GGally)
+library(caret)
+library(mplot)
+library(lmSubsets)
+```
+
+```{r}
+# The original data is loaded here
+#| output: FALSE
+house = read.delim("housing-prices-ge19.txt", 
+                    header = TRUE)
+# convert data types
+house = house %>% mutate (
+  Waterfront = as.factor(Waterfront),
+  New.Construct = as.factor(New.Construct),
+  Central.Air = as.factor(Central.Air),
+  Fuel.Type = as.factor(Fuel.Type),
+  Heat.Type = as.factor(Heat.Type),
+  Sewer.Type = as.factor(Sewer.Type),
+  Test = as.factor(Test)
+)
+
+# Remove the Test column, because we do not have the metadata
+house = house %>%
+  select(-Test)
+```
+
+
+# Introduction 
+Introduction here
+
+To cite, edit the ref.bib document; and use \cite{PeerJ:Rcpp} here.
+
+Once you cited, the references will automatically show up at the end of the article.
+
+
+## two "#" will make a 'subtitle'
+Introduction subsection if needed
+
+
+
+# Data set description
+Data description here
+
+
+
+
+# Analysis
+The backward AIC, forward AIC, and exhaustive search were used to perform multiple regression to find the fitted model. The AIC provides a parameter for model selection that should be optimised for it. For the backward AIC, the model selection process starts with all variables and, then, removes the least informative variables from the fitted model based on how they would affect the AIC value until the lowest overall AIC is reached. For the forward AIC, the model selection starts with no variables other than the dependent variable (here, price), and, then, adds the most informative variables based on the AIC until the fitted model is reached that has the overall lowest AIC score. The exhaustive search was used as a measure of checking the fitted models given by the backward and forward AIC, and it returned the same model. The following fitted model was obtained:
+Price ~ Lot.Size + Waterfront1 + Age + Land.Value + New.Construct1 + Central.Air1 + Fuel.TypeGas + Fuel.TypeOil + Heat.TypeHot Water + Heat.TypeNone + Living.Area + Bedrooms + Bathrooms + Rooms
+Four assumptions were checked for both the backwards and forwards AIC. Firstly, the linearity assumption was met, as a linear relationship was shown in scatter plots, and there was also no obvious pattern shown in the residuals vs. fitted values plot. Secondly, the independence assumption was likely not met. That is because properties within the same area are likely not independent, as they will typically have similar attributes (such as whether they are waterfront). For condominiums specifically, where individual units are typically built similarly and common spaces around specific units are shared, would independence not be ensured. Thirdly, the homoscedasticity assumption was met, as residuals do not seem to be fanning out over the range of the fitted values in the residuals vs. fitted values plot. Fourthly, for the normality assumption, most of the points are reasonably close to the line on the QQ plot, however, there is some departure from the line at both ends. Because of the sufficiently large sample size, we can disregard this and assume normality while relying on the central limit theorem to ensure that the inferences are at least approximately valid, so the normality assumption can be assumed to be met as well.
+
+Model Stability
+
+
+
+# Results
+Results here
+
+
+
+# Discussion and Conclusion
+Discussion and Conclusion here
+
+
+

@@ -1,0 +1,384 @@
+---
+title: "Multiple Regression"
+format: html
+editor: visual
+---
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+library(tidyverse)
+library(ggfortify)
+library(ggplot2)
+library(dplyr)
+library(ISLR)
+library(sjPlot)
+library(leaps)
+library(GGally)
+
+# reads in data
+house_data = read.delim("../../Desktop/Project/housing-prices-ge19.txt",
+                        header = TRUE)
+# converts data types 
+house_data = house_data %>% mutate ( 
+  Waterfront = as.factor(Waterfront), 
+  New.Construct = as.factor(New.Construct), 
+  Central.Air = as.factor(Central.Air), 
+  Fuel.Type = as.factor(Fuel.Type), 
+  Heat.Type = as.factor(Heat.Type), 
+  Sewer.Type = as.factor(Sewer.Type), 
+  Test = as.factor(Test) 
+) 
+
+# shows data
+# glimpse(house_data)
+```
+
+Checks linear assumption beforehand
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+# Scatterplots of lot size against Price
+price_lotsize = house_data |> ggplot() +
+  aes(x = Lot.Size, y = Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+# Scatterplots of age against Price
+price_age = house_data |> ggplot() +
+  aes(x = Age, y = Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+# Scatterplots of land value against Price
+price_landvalue = house_data |> ggplot() +
+  aes(x = Land.Value, y = Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+# Scatterplots of living area against Price
+price_livingarea = house_data |> ggplot() +
+  aes(x = Living.Area, y = Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+# Scatterplots of percent college against Price
+price_pctcollege = house_data |> ggplot() +
+  aes(x = Pct.College, y = Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+# Scatterplots of bedrooms against Price
+price_bedrooms = house_data |> ggplot() +
+  aes(x = Bedrooms, y = Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+# Scatterplots of fireplaces against Price
+price_fireplaces = house_data |> ggplot() +
+  aes(x = Fireplaces, y = Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+# Scatterplots of bathrooms against Price
+price_bathrooms = house_data |> ggplot() +
+  aes(x = Bathrooms, y = Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+# Scatterplots of rooms against Price
+price_rooms = house_data |> ggplot() +
+  aes(x = Rooms, y = Price) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+```
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+# Prints the scatterplots
+price_lotsize
+price_age
+price_landvalue
+price_livingarea
+price_pctcollege
+price_bedrooms
+price_fireplaces
+price_bathrooms
+price_rooms
+```
+
+Checks homoskedasticity (and linearity) assumption beforehand
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+all = lm(Price  ~  ., data = house_data)
+autoplot(all, which = c(1,2)) 
+```
+
+Performs backwards AIC
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+# Sample Mean of Price
+M0_back = lm(house_data$Price ~ 1, data = house_data)
+# Price against everything except itself
+M1_back = lm(house_data$Price ~ ., data = house_data)
+
+# Rounds summary of M0 to 3 signficant figures
+round(summary(M0_back)$coef,3)
+# Rounds summary of M1 to 3 signficant figures
+round(summary(M1_back)$coef,3)
+```
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+# Dropping of variables backwards until lowest AIC is reached
+step.back.aic = step(M1_back,
+                     direction = "backward",
+                     trace = FALSE)
+```
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+# Model stability
+
+```
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+# Assessing performance
+n = nrow(house_data)
+
+n_train = floor(0.8*n)
+n_test = n - n_train
+grp_labs = rep(c("Train","Test"), times = c(n_train,n_test))
+house_data$grp = sample(grp_labs)
+train_dat = house_data %>% filter(grp == "Train")
+lm_full_train = lm(Price ~ Lot.Size + Waterfront + Age + 
+    Land.Value + New.Construct + Central.Air + Heat.Type + Living.Area + 
+    Bedrooms + Bathrooms + Rooms + Test, data = train_dat)
+test_dat = house_data %>% filter(grp =="Test")
+full_pred = predict(lm_full_train, newdata = test_dat)
+
+# Mean absolute error
+# less affected by outliers
+full_mae = mean(abs(test_dat$Price - full_pred))
+full_mae
+
+# Root mean square error
+full_mse = mean((test_dat$Price - full_pred)^2)
+
+# 10-fold cross validation
+set.seed(5)
+nrow(house_data)
+
+house_data$grp = NULL
+fold_id = c(1:4, rep(1:10, each = round(nrow(house_data)/10)))
+
+house_data$fold_id = sample(fold_id, replace = FALSE)
+
+k = 10
+full_mse = vector(mode = "numeric", length = k)
+full_mae = vector(mode = "numeric", length = k)
+
+for (i in 1:k) {
+  test_set = house_data[house_data$fold_id == i,]
+  training_set = house_data[house_data$fold_id != i,]
+  full_lm = lm(Price ~ Lot.Size + Waterfront + Age + 
+    Land.Value + New.Construct + Central.Air + Heat.Type + Living.Area + 
+    Bedrooms + Bathrooms + Rooms + Test, data = training_set)
+  full_pred = predict(full_lm, test_set)
+  full_mse[i] = mean((test_set$Price - full_pred)^2)
+  full_mae[i] = mean(abs(test_set$Price - full_pred)^2)
+}
+
+
+
+```
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+# Assumption checking
+# Assumption 1 (normality):
+
+# GGally::ggpairs(M1_back) + theme_bw(base_size = 22)
+autoplot(M1_back, which = c(1,2)) 
+
+# Assumption 2(independence):
+
+# Assumption 3(homoskedasticity):
+autoplot(M1_back, which = c(1,2)) 
+
+
+# Assumption 4(normality):
+autoplot(M1_exh, which = c(2)) 
+```
+
+Performs forwards AIC
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+# Sample Mean of Price
+M0_fwd = lm(house_data$Price ~ 1, data = house_data)
+# Price against everything except itself
+M1_fwd = lm(house_data$Price ~ ., data = house_data)
+
+# Rounds summary of M0 to 3 signficant figures
+round(summary(M0_fwd)$coef,3)
+# Rounds summary of M1 to 3 signficant figures
+round(summary(M1_fwd)$coef,3)
+```
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+# Dropping of variables forwards until lowest AIC is reached
+step.fwd.aic = step(M0_fwd, scope = list(lower = M0_fwd, upper = M1_fwd),
+                     direction = "forward",
+                     trace = FALSE)
+```
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+# Model stability
+
+```
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+# Cross validation
+# Assessing performance
+n = nrow(house_data)
+
+n_train = floor(0.8*n)
+n_test = n - n_train
+grp_labs = rep(c("Train","Test"), times = c(n_train,n_test))
+house_data$grp = sample(grp_labs)
+train_dat = house_data %>% filter(grp == "Train")
+lm_full_train = lm(Price ~ Living.Area + Land.Value + Bathrooms + 
+    Waterfront + New.Construct + Heat.Type + Lot.Size + Central.Air + 
+    Age + Rooms + Bedrooms + Test, data = train_dat)
+test_dat = house_data %>% filter(grp =="Test")
+full_pred = predict(lm_full_train, newdata = test_dat)
+
+# Mean absolute error
+# less affected by outliers
+full_mae = mean(abs(test_dat$Price - full_pred))
+full_mae
+
+# Root mean square error
+full_mse = mean((test_dat$Price - full_pred)^2)
+
+# 10-fold cross validation
+set.seed(5)
+nrow(house_data)
+
+house_data$grp = NULL
+fold_id = c(1:4, rep(1:10, each = round(nrow(house_data)/10)))
+
+house_data$fold_id = sample(fold_id, replace = FALSE)
+
+k = 10
+full_mse = vector(mode = "numeric", length = k)
+full_mae = vector(mode = "numeric", length = k)
+
+for (i in 1:k) {
+  test_set = house_data[house_data$fold_id == i,]
+  training_set = house_data[house_data$fold_id != i,]
+  full_lm = lm(Price ~ Living.Area + Land.Value + Bathrooms + 
+    Waterfront + New.Construct + Heat.Type + Lot.Size + Central.Air + 
+    Age + Rooms + Bedrooms + Test, data = training_set)
+  full_pred = predict(full_lm, test_set)
+  full_mse[i] = mean((test_set$Price - full_pred)^2)
+  full_mae[i] = mean(abs(test_set$Price - full_pred)^2)
+}
+
+```
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+# Assumption checking
+# Assumption 1 (normality):
+
+# GGally::ggpairs(house_data) + theme_bw(base_size = 22)
+autoplot(step.fwd.aic, which = c(1,2)) 
+
+# Assumption 2(independence):
+
+# Assumption 3(homoskedasticity):
+autoplot(M1_fwd, which = c(1,2)) 
+
+
+# Assumption 4(normality):
+autoplot(M1_fwd, which = c(2)) 
+```
+
+Performs exhaustive search
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+# Sample Mean of Price
+M0_exh = lm(house_data$Price ~ 1, data = house_data)
+# Price against everything except itself
+M1_exh = lm(house_data$Price ~ ., data = house_data)
+
+# Rounds summary of M0 to 3 signficant figures
+round(summary(M0_exh)$coef,3)
+# Rounds summary of M1 to 3 signficant figures
+round(summary(M1_exh)$coef,3)
+```
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+# Exhaustive search
+set.seed(1)
+library(leaps)
+exh = regsubsets(Price ~ ., data = house_data, nvmax = 15)
+summary(exh)$outmat
+```
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+# Model stability
+
+```
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+# Cross validation
+# Assessing performance
+n = nrow(house_data)
+
+n_train = floor(0.8*n)
+n_test = n - n_train
+grp_labs = rep(c("Train","Test"), times = c(n_train,n_test))
+house_data$grp = sample(grp_labs)
+train_dat = house_data %>% filter(grp == "Train")
+lm_full_train = lm(Price ~ Living.Area + Land.Value + Bathrooms + 
+    Waterfront + New.Construct + Heat.Type + Lot.Size + Central.Air + 
+    Age + Rooms + Bedrooms + Test, data = train_dat)
+test_dat = house_data %>% filter(grp =="Test")
+full_pred = predict(lm_full_train, newdata = test_dat)
+
+# Mean absolute error
+# less affected by outliers
+full_mae = mean(abs(test_dat$Price - full_pred))
+full_mae
+
+# Root mean square error
+full_mse = mean((test_dat$Price - full_pred)^2)
+
+# 10-fold cross validation
+set.seed(5)
+nrow(house_data)
+
+house_data$grp = NULL
+fold_id = c(1:4, rep(1:10, each = round(nrow(house_data)/10)))
+
+house_data$fold_id = sample(fold_id, replace = FALSE)
+
+k = 10
+full_mse = vector(mode = "numeric", length = k)
+full_mae = vector(mode = "numeric", length = k)
+
+for (i in 1:k) {
+  test_set = house_data[house_data$fold_id == i,]
+  training_set = house_data[house_data$fold_id != i,]
+  full_lm = lm(Price ~ Living.Area + Land.Value + Bathrooms + 
+    Waterfront + New.Construct + Heat.Type + Lot.Size + Central.Air + 
+    Age + Rooms + Bedrooms + Test, data = training_set)
+  full_pred = predict(full_lm, test_set)
+  full_mse[i] = mean((test_set$Price - full_pred)^2)
+  full_mae[i] = mean(abs(test_set$Price - full_pred)^2)
+}
+
+```
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+# Assumption checking
+# Assumption 1 (normality):
+
+# GGally::ggpairs(house_data) + theme_bw(base_size = 22)
+autoplot(M1_exh, which = c(1,2)) 
+
+# Assumption 2(independence):
+
+# Assumption 3(homoskedasticity):
+autoplot(M1_exh, which = c(1,2)) 
+
+
+# Assumption 4(normality):
+autoplot(M1_exh, which = c(2)) 
+
+```

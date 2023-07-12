@@ -1,0 +1,112 @@
+---
+title: "House Prices in New York"
+author: "Group CC901E2: SID's"
+institute: "The University of Sydney"
+format:
+  revealjs:
+    self-contained: true
+    fig-format: retina
+    toc: true
+    toc-depth: 1
+    number-sections: false
+    code-line-numbers: false
+    slide-number: c
+    scrollable: true
+    pdf-max-pages-per-slide: 1
+    history: false # don't add each slide to browser history
+    
+execute:
+  echo: false
+  warning: false # do not show warning in the chunk
+  message: false # do not show message in the chunk
+---
+
+# Introduction
+
+```{r message=FALSE}
+# Load packages here
+library(tidyverse)
+library(ggplot2)
+library(ggfortify)
+library(dplyr)
+library(ISLR)
+library(sjPlot)
+library(leaps)
+library(GGally)
+library(caret)
+library(mplot)
+```
+
+```{r}
+# The original data is loaded here
+#| output: FALSE
+house = read.delim("housing-prices-ge19.txt", 
+                    header = TRUE)
+# convert data types
+house = house %>% mutate (
+  Waterfront = as.factor(Waterfront),
+  New.Construct = as.factor(New.Construct),
+  Central.Air = as.factor(Central.Air),
+  Fuel.Type = as.factor(Fuel.Type),
+  Heat.Type = as.factor(Heat.Type),
+  Sewer.Type = as.factor(Sewer.Type),
+  Test = as.factor(Test)
+)
+
+# Remove the Test column, because we do not have the metadata
+house = house %>%
+  select(-Test)
+
+# clean names
+# house = janitor::clean_names(house)
+```
+
+
+
+
+# More Discussion
+
+Model stability
+
+## `mplot` package {.smaller}
+
+It takes some time to create the `vis` and `af` objects for plotting variable inclusion plot and model stability plot, so we can save it as `RData`.
+
+```{r, echo=TRUE, eval=FALSE}
+vis.h = mplot::vis(lm.h.f, B = 100, seed = 2022)
+af.h <- mplot::af(lm.h.f, B = 100, n.c = 300, seed = 2022)
+save(vis.h, af.h, file = "house_main.RData")
+```
+Then, load it when we need.
+```{r, echo=TRUE}
+load("house_main.RData")
+```
+
+## Variable Inclusion Plot {.smaller}
+
+```{r echo=TRUE, fig.fullwidth=TRUE}
+plot(vis.h, which = "vip", interactive = FALSE, legend.position = "bottom")
+```
+
+## Variable Inclusion Plot: Insight {.smaller}
+
+-   `Land.Value`, `Living.Area`, `Bathrooms`, `New.Construct`, `Waterfront` are the five most important variables for predicting `Price`.
+-   The non-monotonic nature of the `HeatTypeHot.Air` line indicates that a group of variables contains similar information to it.
+-   The path of `Sewer.TypePublic` and all levels of `FuelType` lie below the path of redundant variable, which means they are included in models by chance (don't provide any useful information).
+
+## Model stability Plot {.smaller}
+
+-   There appears to be dominant models in models of size **two, three, and five** (including the intercept), as demonstrated by one of the circles being substantially larger than the other circles with models of the same size.
+-   The stepwise model (size = 14) is not stable as all circles of that size are small.
+
+```{r, echo=TRUE}
+plot(vis.h, highlight = "Heat.TypeHot.Air", which = "boot", interaction = F, max.circle = 10, seed = 2022, legend.position = "bottom")
+```
+
+## Which models are dominant? {.smaller}
+
+```{r, echo=TRUE}
+print(vis.h, min.prob = 0.5)
+```
+- The simple regression model $\{Living.Area\}$ and $\{Land.Value, Living.Area\}$ model are selected in all bootstrap resamples.
+- The $\{Waterfront1, Land.Value, Living.Area, Bathrooms\}$ model is selected in 78% of bootstrap resamples.
